@@ -1,4 +1,7 @@
 # interview_crew_raketa
+использовал : spring-boot2.6.2
+бд: Postgres
+
 Реализовал следующие методы:
 
 @PostMapping public ResponseEntity createValues(@RequestParam @Min(0) Integer number) по данному методу хотелось бы ложить пачками, а не как это делает hibernate- по 1 записи;
