@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "values")
-public class Value {
+public class Values {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -16,10 +16,10 @@ public class Value {
     @Column(name = "value")
     private String value;
 
-    public Value() {
+    public Values() {
     }
 
-    public Value(String value) {
+    public Values(String value) {
         this.value = value;
         this.date = LocalDateTime.now();
     }

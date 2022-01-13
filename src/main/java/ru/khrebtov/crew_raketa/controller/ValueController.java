@@ -6,7 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.khrebtov.crew_raketa.dto.ValueDto;
-import ru.khrebtov.crew_raketa.entity.Value;
+import ru.khrebtov.crew_raketa.entity.Values;
 import ru.khrebtov.crew_raketa.services.ValueService;
 
 import javax.validation.Valid;
@@ -58,7 +58,7 @@ public class ValueController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Value>> findAll(@RequestParam(required = false) Map<String, String> allRequestParams) {
+    public ResponseEntity<List<Values>> findAll(@RequestParam(required = false) Map<String, String> allRequestParams) {
         logger.info("getValues params: {}", allRequestParams);
 
         return ResponseEntity.ok(valueService.findAll(allRequestParams));

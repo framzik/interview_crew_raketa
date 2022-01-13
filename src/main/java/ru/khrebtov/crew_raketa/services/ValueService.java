@@ -1,11 +1,13 @@
 package ru.khrebtov.crew_raketa.services;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import ru.khrebtov.crew_raketa.dto.ValueDto;
 import ru.khrebtov.crew_raketa.entity.SearchCriteria;
-import ru.khrebtov.crew_raketa.entity.Value;
 import ru.khrebtov.crew_raketa.entity.ValueSpecification;
+import ru.khrebtov.crew_raketa.entity.Values;
 import ru.khrebtov.crew_raketa.repositories.ValueRepo;
 
 import javax.transaction.Transactional;
@@ -15,10 +17,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static java.util.Objects.isNull;
+
 @Service
 public class ValueService {
     private final ValueRepo valueRepo;
-    private final Integer BATCH_SIZE = 75;
+    @Value("${spring.jpa.properties.hibernate.jdbc.batch_size}")
+    private Integer batchSize;
 
     public ValueService(ValueRepo valueRepo) {
         this.valueRepo = valueRepo;
@@ -26,25 +31,15 @@ public class ValueService {
 
     @Transactional
     public void createValues(int number) {
-        List<Value> values = new LinkedList<>();
-//        int countFullBatch = number / BATCH_SIZE;
-//        int remainder = number - (countFullBatch * BATCH_SIZE);
-//        int countWrittenBatch = 0;
-//
+        List<Values> values = new LinkedList<>();
         for (int i = 1; i <= number; i++) {
-            values.add(new Value("Запись " + i));
-//            if (values.size() == BATCH_SIZE) {
-//                valueRepo.saveAll(values);
-//                values.clear();
-//                countWrittenBatch++;
-//            }
-//
-//            if (countFullBatch == countWrittenBatch && values.size() == remainder) {
-//                valueRepo.saveAll(values);
-//                values.clear();
-//            }
+            values.add(new Values("Запись " + i));
+            if (values.size() == batchSize) {
+                valueRepo.saveAll(values);
+                values.clear();
+            }
         }
-        valueRepo.saveAll(values);
+        if (values.size() > 0) valueRepo.saveAll(values);
     }
 
     @Transactional
@@ -53,9 +48,9 @@ public class ValueService {
     }
 
     public boolean updateValue(long id, ValueDto valueDto) {
-        Optional<Value> oValueForUpdate = valueRepo.findById(id);
+        Optional<Values> oValueForUpdate = valueRepo.findById(id);
         if (oValueForUpdate.isPresent()) {
-            Value value = oValueForUpdate.get();
+            Values value = oValueForUpdate.get();
             value.setValue(valueDto.getValue());
             value.setDate(LocalDateTime.now());
             valueRepo.save(value);
@@ -64,18 +59,43 @@ public class ValueService {
         return oValueForUpdate.isPresent();
     }
 
-    public List<Value> findAll(Map<String, String> allRequestParams) {
-        Specification<Value> finalSpec = new ValueSpecification(null);
+    public List<Values> findAll(Map<String, String> allRequestParams) {
+        Specification<Values> finalSpec = new ValueSpecification(null);
+        Sort finalSort = null;
         for (Map.Entry<String, String> e : allRequestParams.entrySet()) {
-            finalSpec = finalSpec.and(initValueSpec(e));
+            String[] splitMapKey = e.getKey().split("\\.");
+
+            if (e.getValue().equalsIgnoreCase("desc")) {
+                finalSort = updateOrInitFinalSortDesc(finalSort, splitMapKey[1]);
+            } else if (e.getValue().equalsIgnoreCase("asc")) {
+                finalSort = updateOrInitFinalSortAsc(finalSort, splitMapKey[1]);
+            } else {
+                finalSpec = finalSpec.and(new ValueSpecification(new SearchCriteria(splitMapKey[1], splitMapKey[2], e.getValue())));
+            }
         }
 
-        return valueRepo.findAll(finalSpec);
+        if (isNull(finalSort)) {
+            return valueRepo.findAll(finalSpec);
+        }
+
+        return valueRepo.findAll(finalSpec, finalSort);
     }
 
-    private ValueSpecification initValueSpec(Map.Entry<String, String> e) {
-        String key = e.getKey();
-        String[] splitKey = key.split("\\.");
-        return new ValueSpecification(new SearchCriteria(splitKey[1], splitKey[2], e.getValue()));
+    private Sort updateOrInitFinalSortAsc(Sort finalSort, String props) {
+        if (isNull(finalSort)) {
+            finalSort = Sort.by(props).ascending();
+        } else
+            finalSort = finalSort.and(Sort.by(props).ascending());
+
+        return finalSort;
+    }
+
+    private Sort updateOrInitFinalSortDesc(Sort finalSort, String props) {
+        if (isNull(finalSort)) {
+            finalSort = Sort.by(props).descending();
+        } else
+            finalSort = finalSort.and(Sort.by(props).descending());
+
+        return finalSort;
     }
 }
